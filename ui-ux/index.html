@@ -1,0 +1,1823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Master Editor — Design-First Web Development</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+<style>
+  :root{
+    --bg: #0a0b0d;
+    --surface: #131519;
+    --surface-2: #191c22;
+    --border: #262a33;
+    --text: #e8e9ec;
+    --muted: #8b92a1;
+    --brand: #7c9eff;
+    --brand-dim: #38415f;
+    --red: #ff6b6b;
+    --red-bg: rgba(255,107,107,0.07);
+    --red-border: rgba(255,107,107,0.28);
+    --green: #4ade80;
+    --green-bg: rgba(74,222,128,0.07);
+    --green-border: rgba(74,222,128,0.28);
+    --amber: #fbbf24;
+    --mono: 'JetBrains Mono', monospace;
+    --display: 'Space Grotesk', sans-serif;
+    --body: 'Inter', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:var(--body); line-height:1.6;
+    background-image:
+      radial-gradient(circle at 10% 0%, rgba(124,158,255,0.06), transparent 40%),
+      radial-gradient(circle at 90% 20%, rgba(74,222,128,0.04), transparent 35%);
+    background-attachment: fixed;
+  }
+  ::selection{ background: var(--brand-dim); color:#fff; }
+  a{ color: var(--brand); }
+  code, pre, .mono{ font-family: var(--mono); }
+
+  /* ===== Top bar / hero ===== */
+  header.hero{
+    padding: 72px 8vw 56px;
+    border-bottom:1px solid var(--border);
+    position:relative; overflow:hidden;
+  }
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:8px;
+    font-family:var(--mono); font-size:12.5px; letter-spacing:0.12em;
+    text-transform:uppercase; color:var(--brand); margin-bottom:22px;
+  }
+  .eyebrow::before{ content:"●"; color:var(--red); }
+  .eyebrow::after{ content:"●"; color:var(--green); }
+  h1.title{
+    font-family:var(--display); font-weight:700;
+    font-size: clamp(2.2rem, 1.4rem + 3.4vw, 4.2rem);
+    line-height:1.05; margin:0 0 20px; max-width:16ch;
+  }
+  h1.title .strike{ position:relative; color:var(--muted); }
+  h1.title .strike::after{
+    content:""; position:absolute; left:-2%; right:-2%; top:52%;
+    height:3px; background:var(--red); transform:rotate(-2deg);
+  }
+  p.lede{
+    max-width:62ch; color:var(--muted); font-size:clamp(1rem, 0.9rem + 0.4vw, 1.2rem);
+    margin: 0 0 32px;
+  }
+  .meta-row{ display:flex; flex-wrap:wrap; gap:14px; }
+  .meta-chip{
+    font-family:var(--mono); font-size:12.5px; color:var(--text);
+    background:var(--surface); border:1px solid var(--border);
+    padding:7px 12px; border-radius:6px;
+  }
+
+  /* ===== Layout ===== */
+  .wrap{ max-width:1180px; margin:0 auto; padding: 0 8vw; }
+  main{ padding-top: 48px; }
+
+  nav.toc{
+    max-width:1180px; margin: 0 auto 8px; padding: 28px 8vw 40px;
+  }
+  nav.toc h2{ font-family:var(--display); font-size:1rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin:0 0 16px; }
+  .toc-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:10px; }
+  .toc-grid a{
+    display:flex; gap:10px; align-items:baseline;
+    text-decoration:none; color:var(--text);
+    background:var(--surface); border:1px solid var(--border);
+    padding:12px 14px; border-radius:8px; font-size:14px;
+    transition: border-color .15s ease, transform .15s ease;
+  }
+  .toc-grid a:hover{ border-color:var(--brand); transform:translateX(2px); }
+  .toc-grid .n{ font-family:var(--mono); color:var(--brand); font-weight:600; font-size:12.5px; }
+  .toc-grid .part-label{
+    grid-column: 1 / -1; font-family:var(--mono); font-size:11.5px; color:var(--muted);
+    text-transform:uppercase; letter-spacing:.1em; margin: 14px 0 2px;
+  }
+
+  /* ===== Section ===== */
+  section.topic{ padding: 26px 8vw 10px; border-top:1px solid var(--border); }
+  section.topic:first-of-type{ border-top:none; }
+  .topic-head{ display:flex; align-items:flex-start; gap:18px; margin-bottom: 6px; }
+  .topic-num{
+    font-family:var(--mono); font-size:13px; color:var(--bg); background:var(--brand);
+    border-radius:6px; padding:4px 9px; font-weight:700; white-space:nowrap; margin-top:6px;
+  }
+  .topic-titles h2{
+    font-family:var(--display); font-weight:600; font-size:clamp(1.3rem, 1.1rem + 0.8vw, 1.7rem);
+    margin:0 0 4px;
+  }
+  .topic-titles .file-tab{
+    font-family:var(--mono); font-size:12.5px; color:var(--muted);
+  }
+  .topic-brief{ color:var(--muted); max-width:74ch; margin: 10px 0 22px; }
+
+  .diff-grid{
+    display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start;
+    margin-bottom: 18px;
+  }
+  @media (max-width: 900px){ .diff-grid{ grid-template-columns:1fr; } }
+
+  .panel{ border-radius:10px; overflow:hidden; border:1px solid var(--border); background:var(--surface); }
+  .panel-head{
+    display:flex; align-items:center; gap:8px; padding:10px 14px;
+    font-family:var(--mono); font-size:12.5px; font-weight:600; letter-spacing:.02em;
+  }
+  .panel.mistake{ border-color: var(--red-border); }
+  .panel.mistake .panel-head{ background: var(--red-bg); color: var(--red); }
+  .panel.fix{ border-color: var(--green-border); }
+  .panel.fix .panel-head{ background: var(--green-bg); color: var(--green); }
+
+  .panel pre{ margin:0; padding:16px; overflow-x:auto; font-size:13px; background:transparent !important; }
+  .panel pre, .panel code{ background:transparent !important; }
+  .panel pre::-webkit-scrollbar{ height:8px; }
+  .panel pre::-webkit-scrollbar-thumb{ background:var(--border); border-radius:8px; }
+
+  .rationale{
+    background:var(--surface-2); border:1px solid var(--border); border-left:3px solid var(--amber);
+    border-radius:8px; padding:14px 18px; margin: 4px 0 40px;
+  }
+  .rationale .r-label{
+    font-family:var(--mono); font-size:11.5px; text-transform:uppercase; letter-spacing:.1em;
+    color:var(--amber); display:block; margin-bottom:6px; font-weight:700;
+  }
+  .rationale p{ margin:0; color:var(--text); font-size:14.5px; }
+  .rationale p + p{ margin-top:8px; }
+
+  .callout{
+    background:var(--surface-2); border:1px solid var(--border);
+    border-radius:8px; padding:16px 18px; margin: 0 0 40px; font-size:14.5px; color:var(--muted);
+  }
+  .callout strong{ color:var(--text); }
+
+  footer.closer{
+    padding: 60px 8vw 90px; text-align:center; border-top:1px solid var(--border); margin-top:24px;
+  }
+  footer.closer h3{ font-family:var(--display); font-size:1.6rem; margin-bottom:10px; }
+  footer.closer p{ color:var(--muted); max-width:56ch; margin:0 auto; }
+
+  .part-divider{
+    padding: 46px 8vw 6px; max-width:1180px; margin:0 auto;
+  }
+  .part-divider .pd-inner{
+    display:flex; align-items:center; gap:16px; color:var(--muted);
+    font-family:var(--mono); font-size:12.5px; text-transform:uppercase; letter-spacing:.12em;
+  }
+  .part-divider .pd-inner::before, .part-divider .pd-inner::after{
+    content:""; flex:1; height:1px; background:var(--border);
+  }
+  .part-divider .pd-pct{ color:var(--brand); }
+
+  /* ===== Concept warm-up (basics primer) ===== */
+  .warmup{
+    background:var(--surface); border:1px solid var(--border); border-radius:10px;
+    padding:20px 22px 22px; margin: 6px 0 28px;
+  }
+  .warmup-label{
+    font-family:var(--mono); font-size:11.5px; text-transform:uppercase; letter-spacing:.1em;
+    color:var(--brand); font-weight:700; display:block; margin-bottom:10px;
+  }
+  .warmup p{ margin:0 0 12px; font-size:14.5px; color:var(--text); max-width:76ch; }
+  .warmup p:last-child{ margin-bottom:0; }
+  .warmup .bridge, p.bridge{ color:var(--muted); font-style:italic; }
+
+  /* Ladder of stages, basic -> advanced */
+  .ladder{
+    display:flex; gap:0; overflow-x:auto; margin: 16px 0 4px; padding-bottom:6px;
+  }
+  .ladder-step{
+    flex:0 0 175px; background:var(--surface-2); border:1px solid var(--border);
+    border-radius:9px; padding:13px 14px; position:relative; margin-right:22px;
+  }
+  .ladder-step:last-child{ margin-right:0; border-color:var(--green-border); }
+  .ladder-step::after{
+    content:"→"; position:absolute; right:-20px; top:50%; transform:translateY(-50%);
+    color:var(--muted); font-size:16px;
+  }
+  .ladder-step:last-child::after{ content:none; }
+  .ladder-step .step-tag{
+    font-family:var(--mono); font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em;
+  }
+  .ladder-step .step-name{ font-family:var(--display); font-weight:600; font-size:15px; margin:5px 0 7px; }
+  .ladder-step .step-desc{ font-size:12.5px; color:var(--muted); line-height:1.45; margin-bottom:8px; min-height:52px; }
+  .ladder-step .step-verdict{ font-family:var(--mono); font-size:11.5px; font-weight:700; }
+  .ladder-step .step-verdict.good{ color:var(--green); }
+  .ladder-step .step-verdict.bad{ color:var(--red); }
+  .ladder-step .step-verdict.warn{ color:var(--amber); }
+
+  /* Live interactive demo shell */
+  .live-demo{
+    background:var(--surface); border:1px solid var(--border); border-radius:10px;
+    padding:18px 20px 20px; margin: 14px 0 10px;
+  }
+  .live-demo-title{
+    font-family:var(--mono); font-size:11.5px; text-transform:uppercase; letter-spacing:.1em;
+    color:var(--muted); margin-bottom:14px; display:flex; align-items:center; gap:8px;
+  }
+  .live-demo-title::before{ content:"▶"; color:var(--green); font-size:9px; }
+  .live-demo-controls{
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px;
+  }
+  .live-demo-controls input[type=range]{
+    flex:1; min-width:140px; accent-color:var(--brand); cursor:pointer;
+  }
+  .live-readout{
+    font-family:var(--mono); font-size:12.5px; color:var(--brand); background:var(--surface-2);
+    border:1px solid var(--border); padding:4px 10px; border-radius:6px; white-space:nowrap;
+  }
+  .demo-btn{
+    font-family:var(--mono); font-size:12.5px; color:var(--text); background:var(--surface-2);
+    border:1px solid var(--border); padding:7px 12px; border-radius:6px; cursor:pointer;
+    transition: all .12s ease;
+  }
+  .demo-btn:hover{ border-color:var(--brand); }
+  .demo-btn.is-active{ border-color:var(--brand); color:var(--brand); background:rgba(124,158,255,0.1); }
+
+  .device-frame{
+    border:1px dashed var(--border); border-radius:8px; margin:0 auto; padding:18px 20px;
+    background:var(--bg); max-width:100%; transition:width .04s linear;
+  }
+  .demo-row{
+    display:flex; justify-content:space-between; align-items:center; gap:14px;
+    padding:9px 0; border-bottom:1px solid var(--border);
+  }
+  .demo-row:last-child{ border-bottom:none; }
+  .demo-row .unit-tag{
+    font-family:var(--mono); font-size:11px; color:var(--muted); background:var(--surface-2);
+    border:1px solid var(--border); border-radius:5px; padding:2px 7px; flex-shrink:0; width:64px; text-align:center;
+  }
+  .demo-row .demo-text{
+    flex:1; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text);
+  }
+  .demo-row.is-breaking .demo-text{ color:var(--red); }
+  .demo-row.is-safe .demo-text{ color:var(--green); }
+
+  .bi-frame p{ margin:0; font-size:16px; line-height:1.7; color:var(--text); }
+  .bi-frame .hl{ background:rgba(124,158,255,0.18); color:var(--brand); border-radius:4px; padding:0 3px; }
+  .bi-frame div.hl{ display:block; padding:6px 8px; margin:2px 0; }
+  .live-demo .note{
+    font-size:13px; color:var(--muted); margin-top:12px; padding-top:12px; border-top:1px solid var(--border);
+  }
+  .live-demo .note strong{ color:var(--text); }
+  .live-demo .note code{ color:var(--brand); }
+
+  /* ===== Go Deeper / explore further ===== */
+  .explore{
+    margin: 0 0 44px; padding:16px 18px 18px; border:1px solid var(--border);
+    border-radius:8px; background:var(--surface);
+    border-left:3px solid var(--brand);
+  }
+  .explore-label{
+    font-family:var(--mono); font-size:11.5px; text-transform:uppercase; letter-spacing:.1em;
+    color:var(--brand); font-weight:700; display:flex; align-items:center; gap:7px; margin-bottom:11px;
+  }
+  .explore-label::before{ content:"🔎"; font-size:13px; }
+  .explore-chips{ display:flex; flex-wrap:wrap; gap:8px; }
+  .explore-chips span{
+    font-family:var(--mono); font-size:12px; color:var(--text);
+    background:var(--surface-2); border:1px solid var(--border);
+    padding:5px 10px; border-radius:14px;
+  }
+
+  /* ===== Link library ===== */
+  .linklib{ padding: 56px 8vw 20px; border-top:1px solid var(--border); }
+  .linklib-head{ margin-bottom: 8px; }
+  .linklib-head h2{
+    font-family:var(--display); font-weight:700; font-size:clamp(1.5rem, 1.2rem + 1.2vw, 2.1rem);
+    margin: 0 0 8px;
+  }
+  .linklib-head p{ color:var(--muted); max-width:64ch; margin:0 0 36px; }
+
+  .linklib-group{ margin-bottom: 40px; }
+  .linklib-group-title{
+    display:flex; align-items:center; gap:10px;
+    font-family:var(--mono); font-size:12.5px; text-transform:uppercase; letter-spacing:.1em;
+    color:var(--brand); font-weight:700; margin-bottom:16px;
+  }
+  .linklib-group-title .lg-icon{ font-size:15px; }
+
+  .linklib-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px; }
+  .link-card{
+    display:block; text-decoration:none; background:var(--surface);
+    border:1px solid var(--border); border-radius:10px; padding:16px 18px;
+    transition: border-color .15s ease, transform .15s ease;
+  }
+  .link-card:hover{ border-color:var(--brand); transform:translateY(-2px); }
+  .link-card .lc-name{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    font-family:var(--display); font-weight:600; font-size:15.5px; color:var(--text); margin-bottom:6px;
+  }
+  .link-card .lc-name .lc-arrow{ color:var(--brand); font-family:var(--mono); font-size:14px; flex-shrink:0; }
+  .link-card .lc-desc{ font-size:13px; color:var(--muted); line-height:1.5; margin:0; }
+  .link-card .lc-url{
+    display:block; margin-top:9px; font-family:var(--mono); font-size:11px; color:var(--muted);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+
+  /* ===== Bonus demo: mobile-first reflow ===== */
+  .rwd-app{ font-family:var(--body); font-size:13px; color:var(--text); }
+  .rwd-topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 12px; border-bottom:1px solid var(--border); gap:10px;
+  }
+  .rwd-logo{ font-weight:700; font-family:var(--display); font-size:13.5px; flex-shrink:0; }
+  .rwd-hamburger{
+    background:none; border:1px solid var(--border); border-radius:6px;
+    padding:4px 9px; color:var(--text); font-size:14px; cursor:default;
+  }
+  .rwd-nav{ display:none; gap:16px; font-size:12.5px; }
+  .rwd-nav a{ color:var(--muted); text-decoration:none; }
+  .rwd-body{ display:flex; flex-direction:column; }
+  .rwd-sidebar{
+    display:flex; gap:8px; padding:9px 12px; border-bottom:1px solid var(--border);
+    overflow-x:auto;
+  }
+  .rwd-sidebar a{
+    white-space:nowrap; font-size:11.5px; color:var(--muted); text-decoration:none;
+    padding:5px 10px; border:1px solid var(--border); border-radius:6px; flex-shrink:0;
+  }
+  .rwd-content{ display:grid; grid-template-columns:1fr; gap:9px; padding:12px; }
+  .rwd-card{
+    background:var(--surface-2); border:1px solid var(--border); border-radius:8px;
+    padding:13px; font-size:11.5px; color:var(--muted);
+  }
+  .rwd-card strong{ display:block; font-size:17px; color:var(--text); margin-top:4px; font-family:var(--display); }
+
+  .rwd-app.is-tablet .rwd-content{ grid-template-columns:repeat(2,1fr); }
+
+  .rwd-app.is-desktop .rwd-hamburger{ display:none; }
+  .rwd-app.is-desktop .rwd-nav{ display:flex; }
+  .rwd-app.is-desktop .rwd-body{ flex-direction:row; }
+  .rwd-app.is-desktop .rwd-sidebar{
+    flex-direction:column; width:128px; flex-shrink:0; border-bottom:none;
+    border-right:1px solid var(--border); overflow-x:visible;
+  }
+  .rwd-app.is-desktop .rwd-content{ grid-template-columns:repeat(3,1fr); flex:1; }
+
+  .bp-badge{
+    font-family:var(--mono); font-size:11px; font-weight:700; padding:3px 9px;
+    border-radius:12px; border:1px solid var(--border);
+  }
+  .bp-badge.mobile{ color:var(--red); background:var(--red-bg); }
+  .bp-badge.tablet{ color:var(--amber); background:rgba(251,191,36,0.08); }
+  .bp-badge.desktop{ color:var(--green); background:var(--green-bg); }
+
+  /* ===== Bonus demo: contrast playground ===== */
+  .cr-controls{ display:flex; flex-wrap:wrap; gap:20px; align-items:center; margin-bottom:16px; }
+  .cr-field{ display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:12.5px; color:var(--muted); }
+  .cr-field input[type=color]{
+    width:34px; height:34px; border:1px solid var(--border); border-radius:6px; padding:0; background:none; cursor:pointer;
+  }
+  .cr-preview{
+    border-radius:8px; padding:28px 24px; text-align:center; margin-bottom:14px; transition:.1s ease;
+  }
+  .cr-preview .cr-sample-lg{ font-family:var(--display); font-size:1.8rem; font-weight:700; margin-bottom:6px; }
+  .cr-preview .cr-sample-sm{ font-size:14px; }
+  .cr-results{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  .cr-ratio{ font-family:var(--mono); font-size:15px; font-weight:700; color:var(--text); }
+  .cr-badge{ font-family:var(--mono); font-size:11.5px; font-weight:700; padding:4px 10px; border-radius:6px; border:1px solid; }
+  .cr-badge.pass{ color:var(--green); border-color:var(--green-border); background:var(--green-bg); }
+  .cr-badge.fail{ color:var(--red); border-color:var(--red-border); background:var(--red-bg); }
+
+  /* ===== Bonus demo: state toggle ===== */
+  .state-frame{ min-height:190px; display:flex; align-items:center; justify-content:center; }
+  .state-card{ width:100%; max-width:340px; }
+  .state-card .sc-loading{ display:flex; flex-direction:column; gap:10px; }
+  .skel{ height:14px; border-radius:5px; background:linear-gradient(90deg, var(--surface-2) 25%, var(--border) 37%, var(--surface-2) 63%);
+    background-size:400% 100%; animation:skel-shimmer 1.4s ease infinite; }
+  @keyframes skel-shimmer{ 0%{background-position:100% 0;} 100%{background-position:0 0;} }
+  .state-card .sc-empty{ text-align:center; color:var(--muted); font-size:13.5px; padding:14px 10px; }
+  .state-card .sc-empty .sc-icon{ font-size:26px; display:block; margin-bottom:8px; }
+  .state-card .sc-error{
+    background:var(--red-bg); border:1px solid var(--red-border); border-radius:8px;
+    padding:14px 16px; font-size:13.5px; color:var(--text);
+  }
+  .state-card .sc-error strong{ color:var(--red); display:block; margin-bottom:4px; }
+  .state-card .sc-success{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .state-card .sc-success .rwd-card{ text-align:left; }
+  .state-tabs{ display:flex; gap:8px; flex-wrap:wrap; }
+
+  ::-webkit-scrollbar{ width:10px; }
+  ::-webkit-scrollbar-track{ background:var(--bg); }
+  ::-webkit-scrollbar-thumb{ background:var(--surface-2); border-radius:8px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap" style="padding:0;">
+    <div class="eyebrow">workshop · 60 min</div>
+    <h1 class="title">The <span class="strike">Code That Runs</span><br>Master Editor</h1>
+    <p class="lede">A working session on catching what AI code generation gets structurally wrong — semantics, accessibility, architecture, and clean code — before it ships. Every example below is a real mistake pattern, paired with the fix a senior engineer would actually ship.</p>
+    <div class="meta-row">
+      <span class="meta-chip">11 mistake/fix pairs</span>
+      <span class="meta-chip">70% UI Skeleton</span>
+      <span class="meta-chip">20% UX Thinking</span>
+      <span class="meta-chip">10% AI Auditing</span>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>Session Map</h2>
+  <div class="toc-grid">
+    <span class="part-label">Part 1 — UI Technical Skeleton (70%)</span>
+    <a href="#t1"><span class="n">01</span> Semantic Integrity</a>
+    <a href="#t2"><span class="n">02</span> Accessible Form UX</a>
+    <a href="#t3"><span class="n">03</span> CSS Architecture</a>
+    <a href="#t4"><span class="n">04</span> Fluid Typography</a>
+    <a href="#t5"><span class="n">05</span> JS Clean Code (SRP)</a>
+    <a href="#t6"><span class="n">06</span> Naming & Searchability</a>
+    <a href="#t7"><span class="n">07</span> Error Handling</a>
+    <span class="part-label">Part 2 — UX Design Thinking (20%)</span>
+    <a href="#t8"><span class="n">08</span> Requirements Stress-Test</a>
+    <a href="#t9"><span class="n">09</span> Inclusive Prompting</a>
+    <span class="part-label">Part 3 — Mindful AI Auditing (10%)</span>
+    <a href="#t10"><span class="n">10</span> ARIA Hallucinations</a>
+    <a href="#t11"><span class="n">11</span> Accessibility Overlays</a>
+    <span class="part-label">Bonus</span>
+    <a href="#b1"><span class="n">B1</span> Mobile-First Reflow</a>
+    <a href="#b2"><span class="n">B2</span> Contrast Playground</a>
+    <a href="#b3"><span class="n">B3</span> Design for Every State</a>
+    <a href="#link-library"><span class="n">🔗</span> Link Library</a>
+  </div>
+</nav>
+
+<main>
+<div class="part-divider"><div class="pd-inner"><span class="pd-pct">70%</span>&nbsp;Part 1 — UI Technical Skeleton</div></div>
+<section class="topic" id="t1">
+  <div class="topic-head">
+    <span class="topic-num">01</span>
+    <div class="topic-titles">
+      <h2>Semantic Integrity: Landmarks &amp; Interactive Controls</h2>
+      <span class="file-tab">dashboard-layout.html</span>
+    </div>
+  </div>
+  <p class="topic-brief">AI defaults to <code>&lt;div&gt;</code> soup because divs are context-free and never throw a validation error. The cost is invisible until someone navigates by landmark regions or the Tab key — then the page has no skeleton at all.</p>
+
+  <div class="warmup">
+    <span class="warmup-label">Concept Warm-up · Block vs. Inline</span>
+    <p>Every HTML element has a default <strong>display</strong> behavior baked in before any CSS is written. <strong>Block-level</strong> elements (<code>&lt;div&gt;</code>, <code>&lt;p&gt;</code>, <code>&lt;h1&gt;</code>, <code>&lt;section&gt;</code>, <code>&lt;nav&gt;</code>) always start on a new line, stretch to fill the available width, and accept <code>width</code>/<code>height</code>. <strong>Inline</strong> elements (<code>&lt;span&gt;</code>, <code>&lt;a&gt;</code>, <code>&lt;strong&gt;</code>) flow inside a line of text, sit side-by-side, and ignore <code>width</code>/<code>height</code>.</p>
+    <p><code>&lt;div&gt;</code> is popular with AI precisely because it's the "no-opinion" block element — no semantic meaning, no built-in role. But it is never neutral about <em>layout</em>: dropping a block-level element where an inline one belongs breaks the flow of a sentence, and vice versa. Try it below.</p>
+  </div>
+
+  <div class="live-demo" id="bi-demo">
+    <div class="live-demo-title">Live demo — wrap the highlighted word</div>
+    <div class="live-demo-controls">
+      <button type="button" class="demo-btn is-active" data-bi-tag="span">&lt;span&gt; — inline</button>
+      <button type="button" class="demo-btn" data-bi-tag="div">&lt;div&gt; — block</button>
+      <button type="button" class="demo-btn" data-bi-tag="button-el">&lt;button&gt; — block-ish, interactive</button>
+    </div>
+    <div class="device-frame bi-frame" id="bi-frame">
+      <p>The quarterly report shows that <span class="hl" id="bi-target">revenue</span> increased 12% year-over-year, driven mostly by the enterprise segment.</p>
+    </div>
+    <p class="note" id="bi-note"><strong>&lt;span&gt;:</strong> flows inline exactly like plain text — the sentence reads normally around it.</p>
+  </div>
+
+  <p class="topic-brief bridge" style="margin-top:-8px;"><em>This is exactly why AI's default of wrapping everything in <code>&lt;div&gt;</code> is a double mistake, not a single one: it discards semantic meaning (no landmark, no role) <strong>and</strong> forces block-level layout onto content that may not want it. Now scale that up from one word to a whole page skeleton:</em></p>
+
+  <div class="diff-grid">
+    <div class="panel mistake">
+      <div class="panel-head">❌ THE MISTAKE</div>
+      <pre><code class="language-markup">&lt;div class="page"&gt;
+  &lt;div class="topbar"&gt;
+    &lt;div class="logo"&gt;Acme&lt;/div&gt;
+    &lt;div class="links"&gt;
+      &lt;div class="link" onclick="go('/billing')"&gt;Billing&lt;/div&gt;
+      &lt;div class="link" onclick="go('/team')"&gt;Team&lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;div class="content"&gt;
+    &lt;div class="card"&gt;
+      &lt;div class="card-title"&gt;Invoices&lt;/div&gt;
+      &lt;div class="btn" onclick="download()"&gt;Download&lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;div class="bottom"&gt;© 2026 Acme Inc.&lt;/div&gt;
+&lt;/div&gt;</code></pre>
+    </div>
+    <div class="panel fix">
+      <div class="panel-head">✅ THE MASTER EDITOR FIX</div>
+      <pre><code class="language-markup">&lt;body class="page"&gt;
+  &lt;header class="topbar"&gt;
+    &lt;a class="logo" href="/"&gt;Acme&lt;/a&gt;
+    &lt;nav aria-label="Primary"&gt;
+      &lt;a class="link" href="/billing"&gt;Billing&lt;/a&gt;
+      &lt;a class="link" href="/team"&gt;Team&lt;/a&gt;
+    &lt;/nav&gt;
+  &lt;/header&gt;
+
+  &lt;main&gt;
+    &lt;section class="card" aria-labelledby="inv-h"&gt;
+      &lt;h2 id="inv-h"&gt;Invoices&lt;/h2&gt;
+      &lt;button type="button" class="btn" onclick="download()"&gt;
+        Download
+      &lt;/button&gt;
+    &lt;/section&gt;
+  &lt;/main&gt;
+
+  &lt;footer&gt;© 2026 Acme Inc.&lt;/footer&gt;
+&lt;/body&gt;</code></pre>
+    </div>
+  </div>
+
+  <div class="rationale">
+    <span class="r-label">Technical Rationale</span>
+    <p><strong>Landmarks are a navigation API, not decoration.</strong> Screen reader users jump between <code>&lt;header&gt;</code>, <code>&lt;nav&gt;</code>, <code>&lt;main&gt;</code>, and <code>&lt;footer&gt;</code> with a single keystroke (e.g. NVDA's <code>D</code> key). A div-only page forces a linear, top-to-bottom read of everything.</p>
+    <p><strong>A <code>div</code> with <code>onclick</code> is not a button.</strong> It has no keyboard focus, no Enter/Space activation, no accessible role, and no disabled state — you'd have to hand-roll all four with <code>tabindex</code> and key listeners just to reach parity with the native element that already does it for free.</p>
+  </div>
+
+  <div class="explore">
+    <span class="explore-label">Go Deeper</span>
+    <div class="explore-chips">
+      <span>HTML5 sectioning elements spec</span>
+      <span>ARIA landmark roles</span>
+      <span>Screen reader landmark navigation (NVDA/VoiceOver rotor)</span>
+      <span>Focus order &amp; tabindex traps</span>
+      <span>Why "divitis" happened historically</span>
+    </div>
+  </div>
+</section>
+<section class="topic" id="t2">
+  <div class="topic-head">
+    <span class="topic-num">02</span>
+    <div class="topic-titles">
+      <h2>Accessible Form UX: Label Association &amp; Hit Areas</h2>
+      <span class="file-tab">signup-form.html</span>
+    </div>
+  </div>
+  <p class="topic-brief">AI-generated forms visually look correct — the placeholder sits where a label would — but placeholders vanish on input and are never announced consistently. Add a 24px checkbox meant for a thumb, and the form fails on both the desk and the sidewalk.</p>
+
+  <div class="diff-grid">
+    <div class="panel mistake">
+      <div class="panel-head">❌ THE MISTAKE</div>
+      <pre><code class="language-markup">&lt;div class="field"&gt;
+  &lt;input type="email" placeholder="Email address"&gt;
+&lt;/div&gt;
+
+&lt;div class="field"&gt;
+  &lt;label&gt;Password&lt;/label&gt;
+  &lt;input type="password"&gt;
+&lt;/div&gt;
+
+&lt;div class="terms"&gt;
+  &lt;input type="checkbox" id="tos" style="width:14px;height:14px"&gt;
+  &lt;label for="tos"&gt;I agree to the Terms&lt;/label&gt;
+&lt;/div&gt;
+
+&lt;button&gt;Sign up&lt;/button&gt;</code></pre>
+    </div>
+    <div class="panel fix">
+      <div class="panel-head">✅ THE MASTER EDITOR FIX</div>
+      <pre><code class="language-markup">&lt;div class="field"&gt;
+  &lt;label for="email"&gt;Email address&lt;/label&gt;
+  &lt;input type="email" id="email" name="email"
+         autocomplete="email" required&gt;
+&lt;/div&gt;
+
+&lt;div class="field"&gt;
+  &lt;label for="pw"&gt;Password&lt;/label&gt;
+  &lt;input type="password" id="pw" name="password"
+         autocomplete="new-password"
+         aria-describedby="pw-hint" required&gt;
+  &lt;p id="pw-hint" class="hint"&gt;Min. 8 characters&lt;/p&gt;
+&lt;/div&gt;
+
+&lt;label class="terms"&gt;
+  &lt;input type="checkbox" id="tos" class="tos-input"&gt;
+  &lt;span&gt;I agree to the Terms&lt;/span&gt;
+&lt;/label&gt;
+
+&lt;button type="submit"&gt;Sign up&lt;/button&gt;
+
+&lt;style&gt;
+  /* Visual box stays 14px; tappable area meets 44px minimum */
+  .terms{ display:flex; align-items:center; gap:10px;
+          padding:15px 0; min-height:44px; cursor:pointer; }
+  .tos-input{ width:14px; height:14px; flex-shrink:0; }
+&lt;/style&gt;</code></pre>
+    </div>
+  </div>
+
+  <div class="rationale">
+    <span class="r-label">Technical Rationale</span>
+    <p><strong>Placeholders are not labels.</strong> They disappear the moment a user types, have no reliably announced role across screen readers, and fail WCAG 3.3.2 (Labels or Instructions). Every input needs a persistent, programmatically-associated <code>&lt;label for=""&gt;</code>.</p>
+    <p><strong>Hit area ≠ visual size.</strong> WCAG 2.5.8 and Apple/Google HIG both target a <strong>44×44px</strong> minimum touch target. Wrapping the checkbox and its text in one <code>&lt;label&gt;</code> with generous padding gets you the full tap area without inflating the checkbox graphic itself.</p>
+  </div>
+
+  <div class="explore">
+    <span class="explore-label">Go Deeper</span>
+    <div class="explore-chips">
+      <span>WCAG 3.3.2 &amp; 2.5.8 success criteria</span>
+      <span>autocomplete attribute token list</span>
+      <span>fieldset / legend for grouped inputs</span>
+      <span>Floating-label pattern trade-offs</span>
+      <span>Fitts's Law for mobile targets</span>
+    </div>
+  </div>
+</section>
+<section class="topic" id="t3">
+  <div class="topic-head">
+    <span class="topic-num">03</span>
+    <div class="topic-titles">
+      <h2>CSS Architecture: Don't Let BEM and Tailwind Marry</h2>
+      <span class="file-tab">pricing-card.html</span>
+    </div>
+  </div>
+  <p class="topic-brief">AI happily bolts a dozen Tailwind utilities onto a BEM-named element because both "worked" in training data it saw separately. The result: two conflicting sources of truth for the same box, and a specificity fight the next developer has to debug blind.</p>
+
+  <div class="diff-grid">
+    <div class="panel mistake">
+      <div class="panel-head">❌ THE MISTAKE — Spaghetti Hybrid</div>
+      <pre><code class="language-markup">&lt;div class="pricing-card__header flex items-center
+            justify-between p-4 bg-white rounded-lg
+            pricing-card__header--highlighted"&gt;
+  &lt;h3 class="pricing-card__title text-xl font-bold"&gt;Pro&lt;/h3&gt;
+&lt;/div&gt;
+
+&lt;style&gt;
+.pricing-card__header{ display:flex; padding:20px; background:#fff; }
+.pricing-card__header--highlighted{ background:#f5f5ff; }
+.pricing-card__title{ font-size:22px; font-weight:800; }
+&lt;/style&gt;
+&lt;!-- Which wins: the 4px Tailwind padding or the 20px BEM padding?
+     Depends on stylesheet load order. Nobody on the team can say
+     without opening devtools. --&gt;</code></pre>
+    </div>
+    <div class="panel fix">
+      <div class="panel-head">✅ THE MASTER EDITOR FIX — Pick One System</div>
+      <pre><code class="language-markup">&lt;!-- Option A: Tailwind-only (utility-first project) --&gt;
+&lt;div class="flex items-center justify-between p-5
+            bg-indigo-50 rounded-lg"&gt;
+  &lt;h3 class="text-xl font-extrabold"&gt;Pro&lt;/h3&gt;
+&lt;/div&gt;
+
+&lt;!-- Option B: BEM-only (design-system / component project) --&gt;
+&lt;div class="pricing-card__header pricing-card__header--highlighted"&gt;
+  &lt;h3 class="pricing-card__title"&gt;Pro&lt;/h3&gt;
+&lt;/div&gt;
+&lt;style&gt;
+.pricing-card__header{ display:flex; align-items:center;
+  justify-content:space-between; padding:20px; background:#fff;
+  border-radius:8px; }
+.pricing-card__header--highlighted{ background:#eef2ff; }
+.pricing-card__title{ font-size:22px; font-weight:800; }
+&lt;/style&gt;</code></pre>
+    </div>
+  </div>
+
+  <div class="rationale">
+    <span class="r-label">Technical Rationale</span>
+    <p><strong>BEM and Tailwind solve the same problem two incompatible ways</strong>: BEM centralizes style decisions in a stylesheet with a naming contract; Tailwind decentralizes them into the markup itself. Mixed together, both a class-based rule and a utility class can target <code>padding</code> on the same element — the winner is decided by CSS cascade order and specificity, not by the developer who wrote either line.</p>
+    <p><strong>The fix is architectural, not cosmetic</strong>: declare one system per project (or per component boundary if migrating) in your styleguide, and enforce it with a linter (e.g. <code>eslint-plugin-tailwindcss</code> or a Stylelint BEM plugin) so the mistake can't reappear in review.</p>
+  </div>
+
+  <div class="explore">
+    <span class="explore-label">Go Deeper</span>
+    <div class="explore-chips">
+      <span>ITCSS &amp; CUBE CSS methodologies</span>
+      <span>CSS Cascade Layers (@layer)</span>
+      <span>Specificity calculators</span>
+      <span>Tailwind @apply vs utility-purity debate</span>
+      <span>CSS-in-JS trade-offs</span>
+    </div>
+  </div>
+</section>
+<section class="topic" id="t4">
+  <div class="topic-head">
+    <span class="topic-num">04</span>
+    <div class="topic-titles">
+      <h2>Fluid Typography &amp; "Liquid Thinking"</h2>
+      <span class="file-tab">article-header.css</span>
+    </div>
+  </div>
+  <p class="topic-brief">AI reaches for a pixel value because it's the most common token in its training data. That value never respects the user's browser font-size setting, and never adapts between a 320px phone and a 2560px monitor without a wall of media queries.</p>
+
+  <div class="warmup">
+    <span class="warmup-label">Concept Ladder · From Fixed Pixels to clamp()</span>
+    <p>Six units, one evolving answer to "how big should this text be." Each stage below fixes one problem in the previous stage — and introduces a new one, until <code>clamp()</code> closes the loop.</p>
+    <div class="ladder">
+      <div class="ladder-step">
+        <span class="step-tag">Stage 1</span>
+        <div class="step-name">px</div>
+        <div class="step-desc">Absolute. Same size everywhere, forever — including when a user sets a larger default font size for readability.</div>
+        <span class="step-verdict bad">✗ Ignores user prefs</span>
+      </div>
+      <div class="ladder-step">
+        <span class="step-tag">Stage 2</span>
+        <div class="step-name">%</div>
+        <div class="step-desc">Relative to the parent's font size. Better in theory — but the "parent" changes per component, so the same <code>%</code> renders differently everywhere it's used.</div>
+        <span class="step-verdict warn">△ Inconsistent</span>
+      </div>
+      <div class="ladder-step">
+        <span class="step-tag">Stage 3</span>
+        <div class="step-name">em</div>
+        <div class="step-desc">Relative to the immediate parent, same as %, but composable for spacing. The catch: nest it and each level multiplies the last. Try the demo below.</div>
+        <span class="step-verdict bad">✗ Compounds silently</span>
+      </div>
+      <div class="ladder-step">
+        <span class="step-tag">Stage 4</span>
+        <div class="step-name">rem</div>
+        <div class="step-desc">Relative to the <em>root</em> (<code>&lt;html&gt;</code>) only — never compounds, and scales when a user changes their browser's base font size.</div>
+        <span class="step-verdict good">✓ Respects user prefs</span>
+      </div>
+      <div class="ladder-step">
+        <span class="step-tag">Stage 5</span>
+        <div class="step-name">vw</div>
+        <div class="step-desc">Relative to viewport width — truly fluid across screen sizes, but unbounded: too small on a phone, absurdly large on an ultrawide.</div>
+        <span class="step-verdict bad">✗ No min or max</span>
+      </div>
+      <div class="ladder-step">
+        <span class="step-tag">Stage 6</span>
+        <div class="step-name">clamp()</div>
+        <div class="step-desc"><code>clamp(min, vw-value, max)</code> — fluid like <code>vw</code>, bounded like <code>rem</code>. One rule, no breakpoints.</div>
+        <span class="step-verdict good">✓ Fluid + bounded</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="live-demo" id="em-demo">
+    <div class="live-demo-title">Live demo — the em compounding trap (Stage 3)</div>
+    <div class="live-demo-controls">
+      <button type="button" class="demo-btn" id="em-add-btn">+ Nest one more nested badge (font-size: 1.2em)</button>
+      <button type="button" class="demo-btn" id="em-reset-btn">Reset</button>
+      <span class="live-readout" id="em-readout">Depth 0 · effective size 16.0px</span>
+    </div>
+    <div class="device-frame" id="em-frame" style="text-align:center;">
+      <span id="em-inner" style="font-size:16px; display:inline-block; padding:6px 12px; background:var(--surface-2); border-radius:6px;">Notification badge</span>
+    </div>
+    <p class="note">Each click wraps the badge in one more parent styled <code>font-size: 1.2em</code> — exactly what a design system's nested <code>Card &gt; Section &gt; Badge</code> components tend to do by accident. No single line of CSS looks wrong; the bug is in the accumulation.</p>
+  </div>
+
+  <div class="live-demo" id="ft-demo">
+    <div class="live-demo-title">Live demo — drag to simulate device width (Stages 1, 5 &amp; 6)</div>
+    <div class="live-demo-controls">
+      <span class="mono" style="font-size:12.5px; color:var(--muted);">📱</span>
+      <input type="range" id="ft-slider" min="320" max="1400" value="380" step="10">
+      <span class="mono" style="font-size:12.5px; color:var(--muted);">🖥️</span>
+      <span class="live-readout" id="ft-readout">380px viewport</span>
+    </div>
+    <div class="device-frame" id="ft-frame" style="width:380px;">
+      <div class="demo-row" id="ft-row-px">
+        <span class="unit-tag">px</span>
+        <span class="demo-text" style="font-size:32px;">Fixed 32px heading</span>
+      </div>
+      <div class="demo-row" id="ft-row-vw">
+        <span class="unit-tag">vw only</span>
+        <span class="demo-text" id="ft-vw-text">Unbounded 8vw heading</span>
+      </div>
+      <div class="demo-row" id="ft-row-clamp">
+        <span class="unit-tag">clamp()</span>
+        <span class="demo-text" id="ft-clamp-text">clamp(1.5rem, 8vw, 2.75rem)</span>
+      </div>
+    </div>
+    <p class="note">At 320px, <strong>vw only</strong> shrinks toward unreadable; drag past ~900px and it balloons past any sane heading size. <strong>clamp()</strong> tracks the same fluid curve in the middle but locks to its <code>min</code>/<code>max</code> at the extremes — that's the row that stays readable at both ends of the slider.</p>
+  </div>
+
+  <p class="topic-brief bridge" style="margin-top:-8px;"><em>That's the theory and the failure modes. Here's the same lesson as a code diff you can paste directly into a component:</em></p>
+
+  <div class="diff-grid">
+    <div class="panel mistake">
+      <div class="panel-head">❌ THE MISTAKE — Fixed Pixels</div>
+      <pre><code class="language-css">.article-title{
+  font-size: 42px;
+}
+.article-body{
+  font-size: 16px;
+}
+
+/* Then patched with breakpoints as complaints come in */
+@media (max-width: 600px){
+  .article-title{ font-size: 26px; }
+}
+@media (max-width: 400px){
+  .article-title{ font-size: 21px; }
+}</code></pre>
+    </div>
+    <div class="panel fix">
+      <div class="panel-head">✅ THE MASTER EDITOR FIX — clamp() Scale</div>
+      <pre><code class="language-css">html{
+  font-size: 100%; /* respects user/browser base size */
+}
+
+.article-title{
+  /* clamp(min, preferred-viewport-relative, max) */
+  font-size: clamp(1.5rem, 1rem + 2.5vw, 2.75rem);
+  line-height: 1.15;
+}
+.article-body{
+  font-size: clamp(1rem, 0.95rem + 0.2vw, 1.125rem);
+  line-height: 1.6;
+}
+/* One rule. Scales continuously from 320px to 2560px.
+   No breakpoint patchwork, no jump cuts. */</code></pre>
+    </div>
+  </div>
+
+  <div class="rationale">
+    <span class="r-label">Technical Rationale</span>
+    <p><strong>Pixels are absolute and deaf to user preference.</strong> A user who bumps their OS/browser default font size for readability sees zero change on a <code>px</code>-sized site — that's a WCAG 1.4.4 (Resize Text) failure. <code>rem</code> units at least scale with the root font size.</p>
+    <p><strong><code>clamp()</code> is "liquid thinking" in one line</strong>: the middle argument (a <code>vw</code>-based fluid value) scales continuously with viewport width, while the min/max <code>rem</code> bounds guarantee text never becomes unreadably small or absurdly large — replacing 3–5 breakpoint overrides with a single, mathematically smooth rule.</p>
+  </div>
+
+  <div class="explore">
+    <span class="explore-label">Go Deeper</span>
+    <div class="explore-chips">
+      <span>Utopia.fyi fluid type/space scales</span>
+      <span>CSS Container Queries (cqw units)</span>
+      <span>Variable fonts</span>
+      <span>Accessible line-length (measure)</span>
+      <span>prefers-reduced-motion &amp; FOUT/FOIT</span>
+    </div>
+  </div>
+</section>
+<section class="topic" id="t5">
+  <div class="topic-head">
+    <span class="topic-num">05</span>
+    <div class="topic-titles">
+      <h2>JS Clean Code: Refactoring the "God Function"</h2>
+      <span class="file-tab">checkout-form.js</span>
+    </div>
+  </div>
+  <p class="topic-brief">AI tends to solve a feature request with one function that does everything requested, in the order requested. It runs on the happy path — but validation, state mutation, and DOM writes are now welded together and untestable in isolation.</p>
+
+  <div class="diff-grid">
+    <div class="panel mistake">
+      <div class="panel-head">❌ THE MISTAKE — One Function, Every Job</div>
+      <pre><code class="language-javascript">function handleSubmit(e) {
+  e.preventDefault();
+  const email = document.getElementById('email').value;
+  const card = document.getElementById('card').value;
+  let errors = [];
+
+  if (!email.includes('@')) errors.push('Bad email');
+  if (card.length !== 16) errors.push('Bad card number');
+
+  if (errors.length > 0) {
+    document.getElementById('errors').innerText = errors.join(', ');
+    document.getElementById('errors').style.display = 'block';
+    return;
+  }
+
+  window.appState.email = email;
+  window.appState.card = card;
+  window.appState.step = 'confirm';
+
+  document.getElementById('form-step').style.display = 'none';
+  document.getElementById('confirm-step').style.display = 'block';
+  document.getElementById('confirm-email').innerText = email;
+}</code></pre>
+    </div>
+    <div class="panel fix">
+      <div class="panel-head">✅ THE MASTER EDITOR FIX — One Job per Function</div>
+      <pre><code class="language-javascript">// 1. Pure validation — no DOM, no state, fully unit-testable
+function validateCheckout({ email, cardNumber }) {
+  const errors = [];
+  if (!email.includes('@')) errors.push('Bad email');
+  if (cardNumber.length !== 16) errors.push('Bad card number');
+  return errors;
+}
+
+// 2. State transition — no DOM
+function advanceToConfirm(state, { email, cardNumber }) {
+  return { ...state, email, cardNumber, step: 'confirm' };
+}
+
+// 3. Rendering — reads state, writes DOM, nothing else
+function renderConfirmStep(state) {
+  document.getElementById('form-step').style.display = 'none';
+  document.getElementById('confirm-step').style.display = 'block';
+  document.getElementById('confirm-email').innerText = state.email;
+}
+
+function renderErrors(errors) {
+  const el = document.getElementById('errors');
+  el.innerText = errors.join(', ');
+  el.style.display = errors.length ? 'block' : 'none';
+}
+
+// 4. Orchestrator — coordinates, does no work itself
+function handleSubmit(e) {
+  e.preventDefault();
+  const input = {
+    email: document.getElementById('email').value,
+    cardNumber: document.getElementById('card').value,
+  };
+
+  const errors = validateCheckout(input);
+  if (errors.length) return renderErrors(errors);
+
+  appState = advanceToConfirm(appState, input);
+  renderConfirmStep(appState);
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="rationale">
+    <span class="r-label">Technical Rationale</span>
+    <p><strong>Single Responsibility Principle isn't academic here — it's testability.</strong> <code>validateCheckout</code> can be unit-tested with plain objects and zero DOM mocking. In the "mistake" version, testing validation means booting a whole document and stubbing five DOM elements first.</p>
+    <p><strong>Decoupled state from rendering also kills a class of bugs</strong>: when state mutation and UI-write are the same step, a failed render can leave state and screen out of sync. Separated, <code>advanceToConfirm</code> is deterministic and replayable regardless of what the DOM is doing.</p>
+  </div>
+
+  <div class="explore">
+    <span class="explore-label">Go Deeper</span>
+    <div class="explore-chips">
+      <span>Functional core, imperative shell</span>
+      <span>Command-Query Separation</span>
+      <span>Testing pyramid</span>
+      <span>State machines (XState)</span>
+      <span>Clean Architecture layers</span>
+    </div>
+  </div>
+</section>
+<section class="topic" id="t6">
+  <div class="topic-head">
+    <span class="topic-num">06</span>
+    <div class="topic-titles">
+      <h2>Naming &amp; Searchability: Kill the Mental Map</h2>
+      <span class="file-tab">order-utils.js</span>
+    </div>
+  </div>
+  <p class="topic-brief">Short variable names feel efficient while writing the code, but they force every future reader to build a private decoder ring — "d is the discount, u is the user, right?" — and make the codebase impossible to grep.</p>
+
+  <div class="diff-grid">
+    <div class="panel mistake">
+      <div class="panel-head">❌ THE MISTAKE — Mental Mapping</div>
+      <pre><code class="language-javascript">function calc(u, o, d) {
+  let t = 0;
+  for (let i = 0; i < o.length; i++) {
+    const it = o[i];
+    let p = it.p * it.q;
+    if (d && it.c) p = p * (1 - d);
+    t += p;
+  }
+  if (u.vip) t = t * 0.95;
+  return t;
+}
+
+// grep "amount" or "total" in this file → zero hits.
+// New engineer has to read every line to know what "t" means.</code></pre>
+    </div>
+    <div class="panel fix">
+      <div class="panel-head">✅ THE MASTER EDITOR FIX — Explicit, Searchable</div>
+      <pre><code class="language-javascript">function calculateOrderTotal(user, orderItems, discountRate) {
+  let runningTotal = 0;
+
+  for (const item of orderItems) {
+    let lineTotal = item.unitPrice * item.quantity;
+
+    const itemIsDiscountEligible = discountRate && item.isCouponEligible;
+    if (itemIsDiscountEligible) {
+      lineTotal = lineTotal * (1 - discountRate);
+    }
+    runningTotal += lineTotal;
+  }
+
+  const VIP_DISCOUNT_MULTIPLIER = 0.95;
+  if (user.isVip) {
+    runningTotal *= VIP_DISCOUNT_MULTIPLIER;
+  }
+
+  return runningTotal;
+}
+
+// grep "runningTotal" instantly surfaces every relevant line.</code></pre>
+    </div>
+  </div>
+
+  <div class="rationale">
+    <span class="r-label">Technical Rationale</span>
+    <p><strong>"Searchability" is a named clean-code heuristic (Robert C. Martin):</strong> a name should be greppable across the codebase. <code>t</code> and <code>d</code> match thousands of unrelated tokens; <code>runningTotal</code> and <code>discountRate</code> match exactly the concept you're looking for.</p>
+    <p><strong>Magic numbers get named too</strong> — <code>VIP_DISCOUNT_MULTIPLIER</code> instead of a bare <code>0.95</code> means the next engineer doesn't have to reverse-engineer business intent from an arithmetic literal, and the value has exactly one place to change.</p>
+  </div>
+
+  <div class="explore">
+    <span class="explore-label">Go Deeper</span>
+    <div class="explore-chips">
+      <span>Ubiquitous language (Domain-Driven Design)</span>
+      <span>id-length / naming ESLint rules</span>
+      <span>Self-documenting code vs. comments debate</span>
+      <span>Code review naming conventions</span>
+    </div>
+  </div>
+</section>
+<section class="topic" id="t7">
+  <div class="topic-head">
+    <span class="topic-num">07</span>
+    <div class="topic-titles">
+      <h2>Error Handling: Spotting the "Silent Killer"</h2>
+      <span class="file-tab">fetch-profile.js</span>
+    </div>
+  </div>
+  <p class="topic-brief">AI-generated try/catch blocks are frequently decorative: they satisfy a syntax requirement without doing anything when an error actually occurs. The app "works" in the demo and fails invisibly in production — no log, no user feedback, no stack trace.</p>
+
+  <div class="diff-grid">
+    <div class="panel mistake">
+      <div class="panel-head">❌ THE MISTAKE — Empty Catch, Ignored Rejection</div>
+      <pre><code class="language-javascript">async function loadProfile(userId) {
+  try {
+    const res = await fetch(`/api/users/${userId}`);
+    const data = await res.json();
+    renderProfile(data);
+  } catch (e) {
+    // TODO: handle error
+  }
+}
+
+// Fire-and-forget call elsewhere in the app —
+// a rejected promise here just vanishes.
+loadProfile(currentUser.id);</code></pre>
+    </div>
+    <div class="panel fix">
+      <div class="panel-head">✅ THE MASTER EDITOR FIX — Handled, Logged, Surfaced</div>
+      <pre><code class="language-javascript">async function loadProfile(userId) {
+  try {
+    const res = await fetch(`/api/users/${userId}`);
+    if (!res.ok) {
+      throw new Error(`Profile request failed: ${res.status}`);
+    }
+    const data = await res.json();
+    renderProfile(data);
+  } catch (error) {
+    console.error('loadProfile failed', { userId, error });
+    reportToErrorTracker(error);
+    renderProfileError('We couldn\'t load this profile. Try again.');
+  }
+}
+
+// Every call site handles the returned promise explicitly
+loadProfile(currentUser.id).catch((error) => {
+  console.error('Unhandled loadProfile rejection', error);
+});</code></pre>
+    </div>
+  </div>
+
+  <div class="rationale">
+    <span class="r-label">Technical Rationale</span>
+    <p><strong>An empty <code>catch</code> block is worse than no try/catch at all</strong> — it actively suppresses the stack trace and error signal that would have surfaced the bug in monitoring, console, or a crash report. <code>fetch()</code> also doesn't reject on HTTP 4xx/5xx by default, so <code>res.ok</code> must be checked explicitly or failures silently render nothing.</p>
+    <p><strong>Every promise needs an owner.</strong> A "fire-and-forget" async call with no <code>.catch()</code> and no <code>await</code> in a try/catch produces an unhandled promise rejection — in Node this can crash the process; in the browser it's a silent console warning almost nobody reads in production.</p>
+  </div>
+
+  <div class="explore">
+    <span class="explore-label">Go Deeper</span>
+    <div class="explore-chips">
+      <span>React Error Boundaries</span>
+      <span>Result/Either pattern (typed errors)</span>
+      <span>window.onunhandledrejection listener</span>
+      <span>Observability tooling (Sentry, Datadog)</span>
+      <span>Retry &amp; exponential backoff</span>
+    </div>
+  </div>
+</section>
+<div class="part-divider"><div class="pd-inner"><span class="pd-pct">20%</span>&nbsp;Part 2 — UX Design Thinking</div></div>
+
+<section class="topic" id="t8">
+  <div class="topic-head">
+    <span class="topic-num">08</span>
+    <div class="topic-titles">
+      <h2>Requirements Stress-Testing: The Simulator Pattern</h2>
+      <span class="file-tab">user-journey.md</span>
+    </div>
+  </div>
+  <p class="topic-brief">AI builds exactly the flow described in the ticket, in the happy-path order it was described. It won't notice the ticket has a logic gap unless you explicitly force it to role-play the journey end-to-end before writing code — that's the "Requirements Simulator" prompt pattern.</p>
+
+  <div class="diff-grid">
+    <div class="panel mistake">
+      <div class="panel-head">❌ THE MISTAKE — Ticket Taken at Face Value</div>
+      <pre><code class="language-markup">TICKET: "Add a 'Cancel Subscription' button to account
+settings. On click, cancel the subscription and show a
+confirmation message."
+
+AI OUTPUT: Ships exactly that. One button, one click,
+one toast: "Subscription cancelled." Done.
+
+--- Gap discovered in production ---
+A user with 3 team seats and an annual plan (11 months
+prepaid, non-refundable) clicks Cancel. They lose access
+immediately, get no prorated refund messaging, and their
+whole team is logged out mid-workday with zero warning.
+Support ticket volume spikes the same afternoon.</code></pre>
+    </div>
+    <div class="panel fix">
+      <div class="panel-head">✅ THE MASTER EDITOR FIX — Simulate the Journey First</div>
+      <pre><code class="language-markup">PROMPT ADDED BEFORE ANY CODE:
+"Before implementing, simulate this user journey step by
+step as three different personas: (1) a monthly single-seat
+user, (2) an annual multi-seat team admin, (3) a user
+mid-way through a free trial. At each step, state what they
+see, what data changes, and flag any decision the ticket
+does NOT specify."
+
+SIMULATION SURFACES THE GAP:
+- Team admin persona → "What happens to the other 2 seats?
+  Ticket doesn't say. Do they lose access instantly or at
+  period end?"
+- Annual persona → "Is there a refund? Ticket doesn't say."
+- Trial persona → "Is 'cancel' the same action as 'end
+  trial early'? Ticket conflates them."
+
+RESULT: Ticket goes back to product with 3 concrete open
+questions BEFORE a single line of code is written.</code></pre>
+    </div>
+  </div>
+
+  <div class="rationale">
+    <span class="r-label">Technical Rationale</span>
+    <p><strong>AI executes literally; it doesn't interrogate a spec unless asked to.</strong> The "Requirements Simulator Pattern" means prompting the model to walk through the feature as multiple real personas <em>before</em> generating code, explicitly asking it to flag anything the ticket leaves ambiguous.</p>
+    <p><strong>This catches logic gaps at the cheapest possible point — before implementation</strong> — instead of in a post-incident review after a support escalation, which is dramatically more expensive to fix in code, comms, and trust.</p>
+  </div>
+
+  <div class="explore">
+    <span class="explore-label">Go Deeper</span>
+    <div class="explore-chips">
+      <span>BDD / Gherkin scenarios</span>
+      <span>Job Stories vs. User Stories</span>
+      <span>Edge-case checklists</span>
+      <span>Premortem technique</span>
+      <span>Specification by example</span>
+    </div>
+  </div>
+</section>
+<section class="topic" id="t9">
+  <div class="topic-head">
+    <span class="topic-num">09</span>
+    <div class="topic-titles">
+      <h2>Inclusive Prompting for Design Imagery</h2>
+      <span class="file-tab">hero-imagery.prompt</span>
+    </div>
+  </div>
+  <p class="topic-brief">A generic image prompt inherits whatever bias is most statistically common in the model's training distribution — often a narrow age range, body type, ability, and ethnicity. Naming the representation you want is a design decision, not an afterthought.</p>
+
+  <div class="diff-grid">
+    <div class="panel mistake">
+      <div class="panel-head">❌ THE MISTAKE — Generic Prompt</div>
+      <pre><code class="language-markup">PROMPT:
+"A professional using our project management app on a
+laptop in a modern office, hero image for landing page."
+
+TYPICAL RESULT:
+Defaults toward a single narrow archetype — one age range,
+one body type, one ethnicity, able-bodied, in a glossy
+tech-startup office. Run 10 times, you'll get 10 near-
+identical people and settings.</code></pre>
+    </div>
+    <div class="panel fix">
+      <div class="panel-head">✅ THE MASTER EDITOR FIX — Explicit Representation</div>
+      <pre><code class="language-markup">PROMPT:
+"A set of 4 hero images for a project management app
+landing page, each showing a different professional using
+the app on a laptop or tablet. Vary across the set:
+- Age range spanning early-career to senior (20s–60s)
+- Body types and physical abilities, including one person
+  using a wheelchair at a standing desk
+- Skin tones and ethnic backgrounds across the set
+- Work settings: a home office, a co-working space, a
+  small retail back-office, a remote outdoor site visit
+- Gender presentation across the set
+Avoid stock-photo clichés (forced smiles, thumbs-up,
+posed laptop angles). Show natural, task-focused posture."
+
+RESULT: A set that actually reflects who uses the product,
+specified as concrete, checkable art-direction constraints
+rather than a single vague adjective like "diverse."</code></pre>
+    </div>
+  </div>
+
+  <div class="rationale">
+    <span class="r-label">Technical Rationale</span>
+    <p><strong>"Diverse" alone is not an actionable brief.</strong> A single vague adjective gives the model nothing concrete to satisfy and often gets tokenistically ignored. Naming specific axes — age, ability, body type, setting, and asking for variation <em>across a set</em> rather than in one image — gives the model checkable constraints.</p>
+    <p><strong>This is UX work, not just image-generation etiquette:</strong> representation in hero imagery directly affects whether a prospective user in the shown-underrepresented group can picture themselves as a customer — a measurable driver of conversion and trust for a broader audience.</p>
+  </div>
+
+  <div class="explore">
+    <span class="explore-label">Go Deeper</span>
+    <div class="explore-chips">
+      <span>Microsoft Inclusive Design Toolkit</span>
+      <span>Persona spectrum method</span>
+      <span>Bias in generative image models (research)</span>
+      <span>Diverse stock imagery libraries</span>
+    </div>
+  </div>
+</section>
+<div class="part-divider"><div class="pd-inner"><span class="pd-pct">10%</span>&nbsp;Part 3 — Mindful AI Auditing</div></div>
+
+<section class="topic" id="t10">
+  <div class="topic-head">
+    <span class="topic-num">10</span>
+    <div class="topic-titles">
+      <h2>ARIA Hallucinations: Attributes That Don't Exist (or Shouldn't)</h2>
+      <span class="file-tab">modal.html</span>
+    </div>
+  </div>
+  <p class="topic-brief">AI has seen thousands of ARIA attributes in training and sometimes blends them — misspelling one, or applying a real one to the wrong element. Both look plausible in a code review and both break assistive tech in ways a sighted visual QA pass will never catch.</p>
+
+  <div class="diff-grid">
+    <div class="panel mistake">
+      <div class="panel-head">❌ THE MISTAKE — Hallucinated / Misapplied ARIA</div>
+      <pre><code class="language-markup">&lt;div class="modal" role="dialog"
+     aria-labeledby="modal-title"&gt;
+  &lt;!-- "aria-labeledby" doesn't exist — correct attribute is
+       "aria-labelledby" (two L's). Screen readers silently
+       ignore the misspelled one; the dialog announces with
+       no accessible name at all. --&gt;
+
+  &lt;h2 id="modal-title"&gt;Delete this file?&lt;/h2&gt;
+
+  &lt;button class="close-x" aria-hidden="true"&gt;
+    &times;
+  &lt;/button&gt;
+  &lt;!-- aria-hidden="true" on a focusable, clickable button
+       hides it from the accessibility tree entirely — it's
+       still Tab-reachable and clickable, but a screen reader
+       user gets a mysterious, unlabeled focus stop that
+       does nothing when activated. --&gt;
+&lt;/div&gt;</code></pre>
+    </div>
+    <div class="panel fix">
+      <div class="panel-head">✅ THE MASTER EDITOR FIX — Verified, Correct ARIA</div>
+      <pre><code class="language-markup">&lt;div class="modal" role="dialog"
+     aria-modal="true"
+     aria-labelledby="modal-title"&gt;
+
+  &lt;h2 id="modal-title"&gt;Delete this file?&lt;/h2&gt;
+
+  &lt;button class="close-x" aria-label="Close dialog"&gt;
+    &times;
+  &lt;/button&gt;
+  &lt;!-- Focusable + interactive → never aria-hidden.
+       aria-label supplies an accessible name for the
+       icon-only button instead. --&gt;
+&lt;/div&gt;</code></pre>
+    </div>
+  </div>
+
+  <div class="rationale">
+    <span class="r-label">Technical Rationale</span>
+    <p><strong>ARIA attribute names are not spell-checked by the browser.</strong> An invalid attribute like <code>aria-labeledby</code> is simply ignored by the accessibility tree — no console warning, no visual difference, and the element quietly loses its accessible name. Validate against the actual ARIA spec, or run an automated audit (axe DevTools) that flags unrecognized attributes.</p>
+    <p><strong>The first rule of <code>aria-hidden</code>: never on a focusable element.</strong> Per the WAI-ARIA spec itself, <code>aria-hidden="true"</code> must not be set on an element that (or whose descendant) can receive focus, because it creates exactly this "hidden but reachable" trap for keyboard and screen-reader users.</p>
+  </div>
+
+  <div class="explore">
+    <span class="explore-label">Go Deeper</span>
+    <div class="explore-chips">
+      <span>WAI-ARIA Authoring Practices Guide (APG)</span>
+      <span>axe-core rules reference</span>
+      <span>"First rule of ARIA": don't use ARIA</span>
+      <span>Automated vs. manual audit coverage overlap</span>
+    </div>
+  </div>
+</section>
+<section class="topic" id="t11">
+  <div class="topic-head">
+    <span class="topic-num">11</span>
+    <div class="topic-titles">
+      <h2>Accessibility Overlays: The Shortcut That Isn't</h2>
+      <span class="file-tab">audit-strategy.md</span>
+    </div>
+  </div>
+  <p class="topic-brief">A one-line overlay script is the "AI-generated fix" of accessibility — it looks like compliance was achieved with near-zero effort. It patches surface symptoms in the DOM at runtime and leaves the actual structural defects in your source untouched.</p>
+
+  <div class="diff-grid">
+    <div class="panel mistake">
+      <div class="panel-head">❌ THE MISTAKE — Overlay "Shortcut"</div>
+      <pre><code class="language-markup">&lt;!-- One script tag, marketed as instant WCAG compliance --&gt;
+&lt;script src="https://widget.accessibility-overlay.example/embed.js"
+        data-account="12345"&gt;&lt;/script&gt;
+
+&lt;!-- What it actually does:
+     - Injects a floating toolbar (font size, contrast toggle)
+     - Attempts to auto-generate alt text and ARIA labels via
+       pattern-matching AFTER the page has already loaded
+     - Cannot fix: illogical heading order, broken keyboard
+       traps, non-semantic custom widgets, focus management
+       in JS-driven modals, or actual content meaning
+     - Source HTML shipped to every user is UNCHANGED --&gt;</code></pre>
+    </div>
+    <div class="panel fix">
+      <div class="panel-head">✅ THE MASTER EDITOR FIX — Manual, Source-Level Audit</div>
+      <pre><code class="language-markup">AUDIT WORKFLOW (repeatable, added to Definition of Done):
+
+1. Automated pass — axe-core / Lighthouse in CI on every PR
+   → catches ~30-40% of issues: missing alt, contrast ratios,
+     duplicate IDs, invalid ARIA.
+
+2. Keyboard-only pass — unplug the mouse. Tab through every
+   interactive element on the page. Can you reach it, see
+   focus, and activate it with Enter/Space?
+
+3. Screen reader pass — VoiceOver (Mac) or NVDA (Windows) on
+   real user flows, not just the homepage: complete the
+   checkout, not just "look at" the checkout.
+
+4. Fix in source — every finding becomes a code change in the
+   actual component (correct heading order, real &lt;button&gt;,
+   proper labelledby) — not a runtime patch layered on top.</code></pre>
+    </div>
+  </div>
+
+  <div class="rationale">
+    <span class="r-label">Technical Rationale</span>
+    <p><strong>Overlays operate on the rendered DOM after the fact, and by pattern-matching</strong> — they cannot understand the actual meaning of a custom widget, cannot repair broken focus order in a JS framework's virtual DOM, and multiple documented lawsuits and disability-advocacy statements (including the "Overlay Fact Sheet" signed by hundreds of accessibility professionals) point to overlays as a source of new usability problems, not a fix.</p>
+    <p><strong>A manual audit produces source-level fixes that compound</strong>: once a component's heading structure or focus trap is corrected in code, it's fixed for every page that reuses it — an overlay's patch has to re-run, and re-guess, on every page load, for every user, forever.</p>
+  </div>
+
+  <div class="explore">
+    <span class="explore-label">Go Deeper</span>
+    <div class="explore-chips">
+      <span>The Overlay Fact Sheet (overlayfactsheet.com)</span>
+      <span>WCAG-EM audit methodology</span>
+      <span>Notable overlay-related legal cases</span>
+      <span>Disability-advocate testimony on overlays</span>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<div class="part-divider"><div class="pd-inner">Bonus — Live Interactive Demos</div></div>
+
+<section class="topic" id="b1">
+  <div class="topic-head">
+    <span class="topic-num">B1</span>
+    <div class="topic-titles">
+      <h2>Mobile-First Layout: Same Markup, Two Experiences</h2>
+      <span class="file-tab">responsive-dashboard.html</span>
+    </div>
+  </div>
+  <p class="topic-brief">AI frequently designs the desktop screenshot it was shown, then bolts on a hamburger menu and a couple of <code>max-width</code> overrides to "make it responsive." Mobile-first flips the build order: write the constrained, single-column case as the <em>default</em>, then progressively add layout as space becomes available. Drag the slider — this is one component, one stylesheet, no JS layout logic.</p>
+
+  <div class="live-demo" id="rwd-demo">
+    <div class="live-demo-title">Live demo — drag to reflow the same dashboard</div>
+    <div class="live-demo-controls">
+      <span class="mono" style="font-size:12.5px; color:var(--muted);">📱</span>
+      <input type="range" id="rwd-slider" min="320" max="1300" value="360" step="10">
+      <span class="mono" style="font-size:12.5px; color:var(--muted);">🖥️</span>
+      <span class="live-readout" id="rwd-readout">360px</span>
+      <span class="bp-badge mobile" id="rwd-badge">Mobile</span>
+    </div>
+    <div class="device-frame" id="rwd-frame" style="width:360px; padding:0;">
+      <div class="rwd-app" id="rwd-app">
+        <div class="rwd-topbar">
+          <span class="rwd-logo">◆ Acme</span>
+          <nav class="rwd-nav">
+            <a href="#">Dashboard</a><a href="#">Projects</a><a href="#">Team</a><a href="#">Settings</a>
+          </nav>
+          <button class="rwd-hamburger" type="button" aria-label="Open menu">☰</button>
+        </div>
+        <div class="rwd-body">
+          <aside class="rwd-sidebar">
+            <a href="#">📊 Overview</a><a href="#">📁 Projects</a><a href="#">👥 Team</a><a href="#">⚙️ Settings</a>
+          </aside>
+          <main class="rwd-content">
+            <div class="rwd-card">Revenue<strong>$42,900</strong></div>
+            <div class="rwd-card">Active Users<strong>1,204</strong></div>
+            <div class="rwd-card">Churn<strong>2.1%</strong></div>
+          </main>
+        </div>
+      </div>
+    </div>
+    <p class="note">Below ~600px the hamburger takes over and the sidebar becomes a horizontal scroll-tab strip — the mobile <strong>default</strong>. Past ~1000px, the same markup gets a persistent sidebar, a horizontal nav, and a 3-column grid — all <code>min-width</code> additions layered on top, never a mobile feature <em>removed</em>.</p>
+  </div>
+
+  <div class="diff-grid">
+    <div class="panel mistake">
+      <div class="panel-head">❌ THE MISTAKE — Desktop-First, Torn Down</div>
+      <pre><code class="language-css">.sidebar{
+  width: 240px;
+  display: block;
+}
+.content{
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+/* Mobile is an afterthought — override everything back down */
+@media (max-width: 600px){
+  .sidebar{ display: none; }
+  .content{ grid-template-columns: 1fr; }
+  .mobile-menu-button{ display: block; } /* wasn't planned for */
+}</code></pre>
+    </div>
+    <div class="panel fix">
+      <div class="panel-head">✅ THE MASTER EDITOR FIX — Mobile-First, Built Up</div>
+      <pre><code class="language-css">/* Base styles ARE the mobile styles — no query needed */
+.sidebar{ display: flex; overflow-x: auto; }
+.content{ display: grid; grid-template-columns: 1fr; }
+
+/* Progressively ADD capability as space becomes available */
+@media (min-width: 600px){
+  .content{ grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 1000px){
+  .sidebar{ flex-direction: column; width: 240px; }
+  .content{ grid-template-columns: repeat(3, 1fr); }
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="rationale">
+    <span class="r-label">Technical Rationale</span>
+    <p><strong>Mobile-first isn't a screen-size preference — it's a load-order and complexity discipline.</strong> A constrained, single-column layout has fewer failure modes than a 3-column desktop grid, so building it first means every subsequent <code>min-width</code> query only ever <em>adds</em> capability, never fights a rule it has to un-do.</p>
+    <p><strong>Desktop-first breaks down under real content and real devices</strong>: <code>max-width</code> overrides accumulate as more breakpoints are discovered in QA, and specificity fights between the base rule and its override get harder to trace with every added query — exactly the CSS Architecture spaghetti from Topic 03, at the layout level.</p>
+  </div>
+
+  <div class="explore">
+    <span class="explore-label">Go Deeper</span>
+    <div class="explore-chips">
+      <span>Mobile-first vs. desktop-first (Luke Wroblewski)</span>
+      <span>CSS min-width vs. max-width queries</span>
+      <span>Container queries (@container)</span>
+      <span>Progressive enhancement</span>
+      <span>Responsive images (srcset / sizes)</span>
+    </div>
+  </div>
+</section>
+
+<section class="topic" id="b2">
+  <div class="topic-head">
+    <span class="topic-num">B2</span>
+    <div class="topic-titles">
+      <h2>Contrast Ratio Playground: Stop Eyeballing Accessibility</h2>
+      <span class="file-tab">contrast-check.js</span>
+    </div>
+  </div>
+  <p class="topic-brief">"That looks readable to me" is not a measurement. AI-generated color pairs (muted gray text, subtle-brand-tint-on-white) frequently fail WCAG contrast silently — the only way to know is to calculate the actual ratio, not eyeball it on one monitor at one brightness.</p>
+
+  <div class="live-demo" id="cr-demo">
+    <div class="live-demo-title">Live demo — pick any two colors, get the real ratio</div>
+    <div class="cr-controls">
+      <label class="cr-field">Text <input type="color" id="cr-fg" value="#8b92a1"></label>
+      <label class="cr-field">Background <input type="color" id="cr-bg" value="#0a0b0d"></label>
+      <button type="button" class="demo-btn" id="cr-preset-fail">Try a common failure</button>
+      <button type="button" class="demo-btn" id="cr-preset-pass">Try a AAA pass</button>
+    </div>
+    <div class="cr-preview" id="cr-preview">
+      <div class="cr-sample-lg" id="cr-sample-lg">Dashboard Overview</div>
+      <div class="cr-sample-sm" id="cr-sample-sm">Body text: quarterly revenue increased 12% year-over-year.</div>
+    </div>
+    <div class="cr-results">
+      <span class="cr-ratio" id="cr-ratio">Ratio: 4.1:1</span>
+      <span class="cr-badge" id="cr-badge-aa-large">AA Large: —</span>
+      <span class="cr-badge" id="cr-badge-aa-normal">AA Normal: —</span>
+      <span class="cr-badge" id="cr-badge-aaa">AAA Normal: —</span>
+    </div>
+    <p class="note">WCAG minimums: <strong>3:1</strong> for large text (≥18.5px bold or ≥24px), <strong>4.5:1</strong> for normal body text (AA), <strong>7:1</strong> for AAA. Most "subtle gray" design-system defaults land between 2.5:1 and 3.5:1 — they read fine to a designer with perfect vision on a calibrated screen, and fail for a large share of real users.</p>
+  </div>
+
+  <div class="explore">
+    <span class="explore-label">Go Deeper</span>
+    <div class="explore-chips">
+      <span>WCAG 1.4.3 &amp; 1.4.6 contrast criteria</span>
+      <span>Relative luminance formula</span>
+      <span>APCA (Advanced Perceptual Contrast Algorithm)</span>
+      <span>Color-blindness simulators</span>
+      <span>Contrast-checking browser extensions</span>
+    </div>
+  </div>
+</section>
+
+<section class="topic" id="b3">
+  <div class="topic-head">
+    <span class="topic-num">B3</span>
+    <div class="topic-titles">
+      <h2>Design for Every State, Not Just the Happy Path</h2>
+      <span class="file-tab">revenue-card.jsx</span>
+    </div>
+  </div>
+  <p class="topic-brief">A ticket that says "show a card with revenue data" gets you exactly one screen from AI: the one with data in it. It rarely generates what the same card looks like while the request is in flight, when there's genuinely nothing to show yet, or when the request fails — so those get invented under deadline pressure, inconsistently, per-component.</p>
+
+  <div class="live-demo" id="state-demo">
+    <div class="live-demo-title">Live demo — same card, four states</div>
+    <div class="live-demo-controls state-tabs">
+      <button type="button" class="demo-btn is-active" data-state="loading">Loading</button>
+      <button type="button" class="demo-btn" data-state="empty">Empty</button>
+      <button type="button" class="demo-btn" data-state="error">Error</button>
+      <button type="button" class="demo-btn" data-state="success">Success</button>
+    </div>
+    <div class="device-frame state-frame">
+      <div class="state-card" id="state-card"><!-- JS renders state here --></div>
+    </div>
+    <p class="note">Only one of these four was in the original ticket. The other three were the actual UX design work — and they're exactly the states real users hit most: a slow connection, a brand-new account with no data yet, and a flaky API.</p>
+  </div>
+
+  <div class="callout">
+    <strong>The four-state checklist</strong> — ask this for every screen before calling a design "done": what does it look like while <strong>loading</strong>, when it's genuinely <strong>empty</strong>, when the request <strong>errors</strong>, and only then, what it looks like on <strong>success</strong>.
+  </div>
+
+  <div class="explore">
+    <span class="explore-label">Go Deeper</span>
+    <div class="explore-chips">
+      <span>Skeleton screens vs. spinners</span>
+      <span>Empty-state UX patterns (NN/g)</span>
+      <span>Error message writing guidelines</span>
+      <span>Optimistic UI updates</span>
+      <span>Offline-first design</span>
+    </div>
+  </div>
+</section>
+
+
+<section class="linklib" id="link-library">
+  <div class="linklib-head">
+    <h2>The Leveling Up Link Library</h2>
+    <p>Share these with your interns for the "Play-Way" and reference portions of the session — muscle-memory games first, technical references for the job itself, and tools for acting as the Driver to the AI's Engine.</p>
+  </div>
+
+  <div class="linklib-group">
+    <div class="linklib-group-title"><span class="lg-icon">🎮</span> Interactive Learning Games</div>
+    <div class="linklib-grid">
+      <a class="link-card" href="https://flukeout.github.io/" target="_blank" rel="noopener">
+        <div class="lc-name">CSS Diner <span class="lc-arrow">↗</span></div>
+        <p class="lc-desc">Master the CSS selectors needed to effectively "edit" AI layouts.</p>
+        <span class="lc-url">flukeout.github.io</span>
+      </a>
+      <a class="link-card" href="https://flexboxfroggy.com/" target="_blank" rel="noopener">
+        <div class="lc-name">Flexbox Froggy <span class="lc-arrow">↗</span></div>
+        <p class="lc-desc">Master positioning logic.</p>
+        <span class="lc-url">flexboxfroggy.com</span>
+      </a>
+      <a class="link-card" href="http://cssgridgarden.com/" target="_blank" rel="noopener">
+        <div class="lc-name">Grid Garden <span class="lc-arrow">↗</span></div>
+        <p class="lc-desc">Master 2D grid layout properties.</p>
+        <span class="lc-url">cssgridgarden.com</span>
+      </a>
+      <a class="link-card" href="https://codingfantasy.com/games/css-grid-attack" target="_blank" rel="noopener">
+        <div class="lc-name">CSS Grid Attack <span class="lc-arrow">↗</span></div>
+        <p class="lc-desc">Advanced layout challenges.</p>
+        <span class="lc-url">codingfantasy.com/games/css-grid-attack</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="linklib-group">
+    <div class="linklib-group-title"><span class="lg-icon">📚</span> Master Editor Technical References</div>
+    <div class="linklib-grid">
+      <a class="link-card" href="https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Accessibility/HTML" target="_blank" rel="noopener">
+        <div class="lc-name">MDN: HTML for Accessibility <span class="lc-arrow">↗</span></div>
+        <p class="lc-desc">The official guide to "the right element for the right job."</p>
+        <span class="lc-url">developer.mozilla.org</span>
+      </a>
+      <a class="link-card" href="https://www.w3.org/WAI/ARIA/apg/" target="_blank" rel="noopener">
+        <div class="lc-name">W3C ARIA Authoring Practices Guide <span class="lc-arrow">↗</span></div>
+        <p class="lc-desc">Definitive patterns for accessible custom widgets.</p>
+        <span class="lc-url">w3.org/WAI/ARIA/apg</span>
+      </a>
+      <a class="link-card" href="https://github.com/ryanmcdermott/clean-code-javascript" target="_blank" rel="noopener">
+        <div class="lc-name">Clean Code JavaScript <span class="lc-arrow">↗</span></div>
+        <p class="lc-desc">Principles for readable and refactorable code.</p>
+        <span class="lc-url">github.com/ryanmcdermott/clean-code-javascript</span>
+      </a>
+      <a class="link-card" href="https://graphite.com/guides/best-vscode-extensions-ai" target="_blank" rel="noopener">
+        <div class="lc-name">Graphite Guide: Best VS Code Extensions for AI <span class="lc-arrow">↗</span></div>
+        <p class="lc-desc">Tools to help you act as the "Driver" for the AI "Engine."</p>
+        <span class="lc-url">graphite.com/guides/best-vscode-extensions-ai</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="linklib-group">
+    <div class="linklib-group-title"><span class="lg-icon">🤖</span> Recommended AI Coding Tools</div>
+    <div class="linklib-grid">
+      <a class="link-card" href="https://github.com/features/copilot" target="_blank" rel="noopener">
+        <div class="lc-name">GitHub Copilot <span class="lc-arrow">↗</span></div>
+        <p class="lc-desc">AI pair programmer for TDD and real-time completions.</p>
+        <span class="lc-url">github.com/features/copilot</span>
+      </a>
+      <a class="link-card" href="https://aws.amazon.com/codewhisperer/" target="_blank" rel="noopener">
+        <div class="lc-name">AWS CodeWhisperer <span class="lc-arrow">↗</span></div>
+        <p class="lc-desc">Real-time code suggestions with security scanning.</p>
+        <span class="lc-url">aws.amazon.com/codewhisperer</span>
+      </a>
+      <a class="link-card" href="https://marketplace.visualstudio.com/items?itemName=Sourcery.sourcery" target="_blank" rel="noopener">
+        <div class="lc-name">Sourcery <span class="lc-arrow">↗</span></div>
+        <p class="lc-desc">AI-powered code refactoring to enforce best practices.</p>
+        <span class="lc-url">marketplace.visualstudio.com</span>
+      </a>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin:14px 0 0;">Note: AI tooling rebrands fast — e.g. AWS CodeWhisperer has since been folded into Amazon Q Developer. Worth a quick check before presenting.</p>
+  </div>
+</section>
+
+<footer class="closer">
+  <h3>The pattern, every time</h3>
+  <p>AI optimizes for "does it render." Your job is "does it work" — for keyboard users, screen readers, thumbs on a cracked phone screen, and the next engineer who has to read this at 2am. Audit for semantics, state, and structure before you merge.</p>
+</footer>
+
+<script>
+(function(){
+  /* ---------- Demo 1: Block vs Inline toggle ---------- */
+  var biButtons = document.querySelectorAll('#bi-demo [data-bi-tag]');
+  var biFrame = document.getElementById('bi-frame');
+  var biNote = document.getElementById('bi-note');
+  var biWord = 'revenue';
+
+  var biCopy = {
+    'span': {
+      html: '<p>The quarterly report shows that <span class="hl">' + biWord + '</span> increased 12% year-over-year, driven mostly by the enterprise segment.</p>',
+      note: '<strong>&lt;span&gt;:</strong> flows inline exactly like plain text — the sentence reads normally around it.'
+    },
+    'div': {
+      html: '<p>The quarterly report shows that <div class="hl">' + biWord + '</div> increased 12% year-over-year, driven mostly by the enterprise segment.</p>',
+      note: '<strong>&lt;div&gt;:</strong> block-level, so it forces a line break before and after — and technically the browser has to auto-close the &lt;p&gt; to legally contain it. Open DevTools: the DOM is no longer one paragraph.'
+    },
+    'button-el': {
+      html: '<p>The quarterly report shows that <button class="hl" style="border:none;cursor:pointer;">' + biWord + '</button> increased 12% year-over-year, driven mostly by the enterprise segment.</p>',
+      note: '<strong>&lt;button&gt;:</strong> inline-block by default — sits in the line like a span, but is now keyboard-focusable and clickable. Right building block if "revenue" should open a breakdown drill-down.'
+    }
+  };
+
+  biButtons.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      biButtons.forEach(function(b){ b.classList.remove('is-active'); });
+      btn.classList.add('is-active');
+      var tag = btn.getAttribute('data-bi-tag');
+      biFrame.innerHTML = biCopy[tag].html;
+      biNote.innerHTML = biCopy[tag].note;
+    });
+  });
+
+  /* ---------- Demo 2: em compounding ---------- */
+  var emDepth = 0;
+  var emFrame = document.getElementById('em-frame');
+  var emReadout = document.getElementById('em-readout');
+
+  function renderEm(){
+    var html = '<span style="font-size:16px; display:inline-block; padding:6px 12px; background:var(--surface-2); border-radius:6px;">Notification badge</span>';
+    for (var i = 0; i < emDepth; i++){
+      html = '<div style="font-size:1.2em;">' + html + '</div>';
+    }
+    emFrame.innerHTML = html;
+    var effective = 16 * Math.pow(1.2, emDepth);
+    emReadout.textContent = 'Depth ' + emDepth + ' · effective size ' + effective.toFixed(1) + 'px';
+  }
+
+  document.getElementById('em-add-btn').addEventListener('click', function(){
+    if (emDepth < 8) emDepth++;
+    renderEm();
+  });
+  document.getElementById('em-reset-btn').addEventListener('click', function(){
+    emDepth = 0;
+    renderEm();
+  });
+
+  /* ---------- Demo 3: viewport slider (px vs vw vs clamp) ---------- */
+  var ftSlider = document.getElementById('ft-slider');
+  var ftFrame = document.getElementById('ft-frame');
+  var ftReadout = document.getElementById('ft-readout');
+  var ftVwText = document.getElementById('ft-vw-text');
+  var ftClampText = document.getElementById('ft-clamp-text');
+  var ftRowVw = document.getElementById('ft-row-vw');
+  var ftRowClamp = document.getElementById('ft-row-clamp');
+
+  function updateFt(){
+    var width = parseInt(ftSlider.value, 10);
+    ftFrame.style.width = Math.min(width, 900) + 'px';
+    ftReadout.textContent = width + 'px viewport';
+
+    // vw-only: 8vw of the *simulated* width, fully unbounded
+    var vwSize = width * 0.08;
+    ftVwText.style.fontSize = vwSize + 'px';
+    ftRowVw.classList.toggle('is-breaking', vwSize < 18 || vwSize > 44);
+
+    // clamp(1.5rem, 8vw, 2.75rem) assuming 1rem = 16px -> min 24px, max 44px
+    var clampSize = Math.max(24, Math.min(vwSize, 44));
+    ftClampText.style.fontSize = clampSize + 'px';
+    ftRowClamp.classList.add('is-safe');
+  }
+
+  ftSlider.addEventListener('input', updateFt);
+  updateFt();
+
+  /* ---------- Bonus B1: mobile-first reflow ---------- */
+  var rwdSlider = document.getElementById('rwd-slider');
+  var rwdFrame = document.getElementById('rwd-frame');
+  var rwdApp = document.getElementById('rwd-app');
+  var rwdReadout = document.getElementById('rwd-readout');
+  var rwdBadge = document.getElementById('rwd-badge');
+
+  function updateRwd(){
+    var width = parseInt(rwdSlider.value, 10);
+    rwdFrame.style.width = Math.min(width, 1100) + 'px';
+    rwdReadout.textContent = width + 'px';
+
+    rwdApp.classList.remove('is-tablet', 'is-desktop');
+    rwdBadge.classList.remove('mobile', 'tablet', 'desktop');
+
+    if (width >= 1000) {
+      rwdApp.classList.add('is-desktop');
+      rwdBadge.classList.add('desktop');
+      rwdBadge.textContent = 'Desktop';
+    } else if (width >= 600) {
+      rwdApp.classList.add('is-tablet');
+      rwdBadge.classList.add('tablet');
+      rwdBadge.textContent = 'Tablet';
+    } else {
+      rwdBadge.classList.add('mobile');
+      rwdBadge.textContent = 'Mobile';
+    }
+  }
+  rwdSlider.addEventListener('input', updateRwd);
+  updateRwd();
+
+  /* ---------- Bonus B2: contrast ratio playground ---------- */
+  var crFg = document.getElementById('cr-fg');
+  var crBg = document.getElementById('cr-bg');
+  var crPreview = document.getElementById('cr-preview');
+  var crSampleLg = document.getElementById('cr-sample-lg');
+  var crSampleSm = document.getElementById('cr-sample-sm');
+  var crRatio = document.getElementById('cr-ratio');
+  var crBadgeAaLarge = document.getElementById('cr-badge-aa-large');
+  var crBadgeAaNormal = document.getElementById('cr-badge-aa-normal');
+  var crBadgeAaa = document.getElementById('cr-badge-aaa');
+
+  function hexToRgb(hex){
+    var v = hex.replace('#','');
+    return {
+      r: parseInt(v.substring(0,2),16),
+      g: parseInt(v.substring(2,4),16),
+      b: parseInt(v.substring(4,6),16)
+    };
+  }
+  function relLuminance(hex){
+    var c = hexToRgb(hex);
+    var chans = [c.r, c.g, c.b].map(function(v){
+      var s = v / 255;
+      return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * chans[0] + 0.7152 * chans[1] + 0.0722 * chans[2];
+  }
+  function contrastRatio(hex1, hex2){
+    var l1 = relLuminance(hex1) + 0.05;
+    var l2 = relLuminance(hex2) + 0.05;
+    return l1 > l2 ? l1 / l2 : l2 / l1;
+  }
+  function setBadge(el, pass, label){
+    el.textContent = label + ': ' + (pass ? 'Pass' : 'Fail');
+    el.classList.remove('pass', 'fail');
+    el.classList.add(pass ? 'pass' : 'fail');
+  }
+
+  function updateContrast(){
+    var fg = crFg.value, bg = crBg.value;
+    crPreview.style.background = bg;
+    crSampleLg.style.color = fg;
+    crSampleSm.style.color = fg;
+    var ratio = contrastRatio(fg, bg);
+    crRatio.textContent = 'Ratio: ' + ratio.toFixed(2) + ':1';
+    setBadge(crBadgeAaLarge, ratio >= 3, 'AA Large');
+    setBadge(crBadgeAaNormal, ratio >= 4.5, 'AA Normal');
+    setBadge(crBadgeAaa, ratio >= 7, 'AAA Normal');
+  }
+  crFg.addEventListener('input', updateContrast);
+  crBg.addEventListener('input', updateContrast);
+  document.getElementById('cr-preset-fail').addEventListener('click', function(){
+    crFg.value = '#999999'; crBg.value = '#ffffff'; updateContrast();
+  });
+  document.getElementById('cr-preset-pass').addEventListener('click', function(){
+    crFg.value = '#2b2b2b'; crBg.value = '#ffffff'; updateContrast();
+  });
+  updateContrast();
+
+  /* ---------- Bonus B3: design for every state ---------- */
+  var stateButtons = document.querySelectorAll('#state-demo [data-state]');
+  var stateCard = document.getElementById('state-card');
+
+  var stateTemplates = {
+    loading: '<div class="sc-loading">' +
+      '<div class="skel" style="width:60%;height:16px;"></div>' +
+      '<div class="skel" style="width:100%;height:44px;"></div>' +
+      '<div class="skel" style="width:100%;height:44px;"></div>' +
+      '</div>',
+    empty: '<div class="sc-empty"><span class="sc-icon">📭</span>No revenue data yet. Connect a payment provider to start tracking.</div>',
+    error: '<div class="sc-error"><strong>Could not load revenue data</strong>The request timed out. <a href="#" style="color:var(--brand);">Retry</a></div>',
+    success: '<div class="sc-success">' +
+      '<div class="rwd-card">Revenue<strong>$42,900</strong></div>' +
+      '<div class="rwd-card">Active Users<strong>1,204</strong></div>' +
+      '</div>'
+  };
+
+  function renderState(state){
+    stateCard.innerHTML = stateTemplates[state];
+  }
+  stateButtons.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      stateButtons.forEach(function(b){ b.classList.remove('is-active'); });
+      btn.classList.add('is-active');
+      renderState(btn.getAttribute('data-state'));
+    });
+  });
+  renderState('loading');
+})();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+</body>
+</html>
